@@ -79,3 +79,63 @@ export async function getApplicationById(req: Request, res: Response) {
     }
 
 } 
+
+//updates an application entry by id in the data source based on the request body
+export async function updateApplicationById(req: Request, res: Response) {
+
+    const id = req.params.id;
+
+    try{
+
+        await connect();
+
+    
+        const result = await applicationModel.findByIdAndUpdate(id, req.body);
+
+        if(!result){
+            res.status(404).send('Cannot update application entry with id= ' + id );
+        }else{
+            res.status(200).send('Application entry was updated successfully.');
+        }
+        
+
+    
+    }catch (error) {
+
+        res.status(500).send("Error updating application entry by id. Error: " + error);
+
+    }finally {
+
+        await disconnect();
+    }
+}
+
+//deletes an application entry by id from the data source
+export async function deleteApplicationById(req: Request, res: Response) {
+
+    const id = req.params.id;
+
+    try{
+
+        await connect();
+
+        const result = await applicationModel.findByIdAndDelete(id);
+
+        if(!result){
+            res.status(404).send('Cannot delete application entry with id= ' + id );
+        }else{
+            res.status(200).send('Application entry was deleted successfully.');
+        }
+        
+
+    
+    }catch (error) {
+
+        res.status(500).send("Error deleting application entry by id. Error: " + error);
+
+    }finally {
+
+        await disconnect();
+    }
+
+}
