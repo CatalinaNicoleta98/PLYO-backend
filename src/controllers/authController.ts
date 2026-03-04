@@ -1,4 +1,4 @@
-import { type Request, type Response } from "express";
+import { type Request, type Response, type NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import Joi, { type ValidationResult } from "joi";
@@ -69,7 +69,7 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const secret = process.env.JWT_SECRET;
+    const secret = process.env.JWT_SECRET || process.env.TOKEN_SECRET;
     if (!secret) {
       res.status(500).json({ error: "JWT_SECRET is not set" });
       return;
@@ -78,10 +78,16 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
     const token = jwt.sign(
       { _id: user._id.toString(), email: user.email },
       secret,
-      { expiresIn: "7d" }
+      { expiresIn: "2h" }
     );
 
-    res.status(200).json({ token });
+    const userId = user._id.toString();
+
+    // Attach the token in a header (handy for clients) and also return it in JSON
+    res
+      .status(200)
+      .header("auth-token", token)
+      .json({ error: null, data: { userId, token } });
   } catch (error) {
     res.status(500).json({ error: "Error logging in", details: String(error) });
   } finally {
@@ -107,4 +113,28 @@ export function validateUserLogin(data: User): ValidationResult {
   });
 
   return schema.validate(data);
+}
+
+// Middleware to verify the token and protect routes
+export function verifyToken(req: Request, res: Response, next: NextFunction): void {
+  const token = req.header("auth-token");
+
+  if (!token) {
+    res.status(401).json({ error: "Access denied, no token provided" });
+    return;
+  }
+
+  const secret = process.env.JWT_SECRET || process.env.TOKEN_SECRET;
+  if (!secret) {
+    res.status(500).json({ error: "JWT_SECRET is not set" });
+    return;
+  }
+
+  try {
+    // Verify token validity
+    jwt.verify(token, secret);
+    next();
+  } catch {
+    res.status(401).send("Invalid token");
+  }
 }
