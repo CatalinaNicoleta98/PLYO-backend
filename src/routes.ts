@@ -1,5 +1,5 @@
 import {Router, Request, Response} from 'express';
-import { createApplication } from './controllers/applicationController';
+import { createApplication, getAllApplications, getApplicationById } from './controllers/applicationController';
 
 const router: Router = Router();
 
@@ -12,5 +12,7 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 router.post('/applications', createApplication);
+router.get('/applications', getAllApplications);
+router.get('/applications/:id', getApplicationById);
 
 export default router;

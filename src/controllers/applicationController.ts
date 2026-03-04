@@ -29,3 +29,53 @@ export async function createApplication(
   }
 }
 
+//retieves all applications from the data source
+
+export async function getAllApplications(req: Request, res: Response) {
+
+    try{
+
+        await connect();
+
+        
+        const result = await applicationModel.find({});
+        
+        res.status(200).send(result);
+
+
+    }catch (error) {
+
+        res.status(500).send("error retrieving applications. Error: " + error);
+
+    }finally {
+
+        await disconnect();
+    }
+
+} 
+
+//retrieves an application entry by id from the data source
+export async function getApplicationById(req: Request, res: Response) {
+
+    try{
+
+        await connect();
+
+        const id = req.params.id;
+
+        
+        const result = await applicationModel.find({_id: id});
+        
+        res.status(200).send(result);
+
+
+    }catch (error) {
+
+        res.status(500).send("error retrieving applications. Error: " + error);
+
+    }finally {
+
+        await disconnect();
+    }
+
+} 

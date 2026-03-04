@@ -11,6 +11,9 @@ dotenvFlow.config();
 //create express application
 const app: Application = express();
 
+//middleware to parse JSON request bodies
+app.use(express.json());
+
 app.use('/api', routes);
 
 export function startServer(){
