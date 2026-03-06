@@ -1,0 +1,48 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - feature/playwright-tests
+  pull_request:
+    branches:
+      - development
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      PORT: 4000
+      TEST_USER_EMAIL: playwright-test@plyo.com
+      TEST_USER_PASSWORD: 123456
+      TOKEN_SECRET: ${{ secrets.TOKEN_SECRET }}
+      DBHOST: ${{ secrets.DBHOST }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Install wait-on
+        run: npm install -g wait-on
+
+      - name: Build project
+        run: npm run build
+
+      - name: Start backend and run tests
+        run: |
+          npm start &
+          wait-on http://127.0.0.1:4000/api
+          npm test
