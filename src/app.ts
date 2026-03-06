@@ -4,6 +4,7 @@ import routes from './routes';
 import {testConnection} from '../repository/db';
 import test from 'node:test';
 import cors from 'cors';
+import { setupDocs } from './util/documentation';
 
 
 dotenvFlow.config();
@@ -43,6 +44,9 @@ export function startServer(){
 
     //setup CORS
     setupCors();
+
+    //setup documentation
+    setupDocs(app);
 
    testConnection();
 const PORT: number = parseInt(process.env.PORT as string) || 4000;
