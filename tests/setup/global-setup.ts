@@ -15,7 +15,7 @@ export default async function globalSetup() {
   }
 
   try {
-    await fetch(`${baseURL}/auth/register`, {
+    await fetch(`${baseURL}/api/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

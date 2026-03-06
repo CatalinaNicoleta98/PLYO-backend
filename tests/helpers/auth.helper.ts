@@ -12,7 +12,7 @@ export async function loginAndGetToken(request: APIRequestContext): Promise<stri
     throw new Error('TEST_USER_EMAIL and TEST_USER_PASSWORD must be defined in environment variables.');
   }
 
-  const response = await request.post('/auth/login', {
+  const response = await request.post('/api/auth/login', {
     data: {
       email,
       password

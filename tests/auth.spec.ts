@@ -12,7 +12,7 @@ test.describe('Authentication - Login', () => {
   // This test focuses only on verifying the login functionality.
 
   test('should log in a user with valid credentials', async ({ request }) => {
-    const response = await request.post('/auth/login', {
+    const response = await request.post('/api/auth/login', {
       data: {
         email: TEST_EMAIL,
         password: TEST_PASSWORD
