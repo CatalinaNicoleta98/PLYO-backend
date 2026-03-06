@@ -44,5 +44,5 @@ jobs:
       - name: Start backend and run tests
         run: |
           npm start &
-          wait-on http://127.0.0.1:4000
+          wait-on http://127.0.0.1:4000/api
           npm test
