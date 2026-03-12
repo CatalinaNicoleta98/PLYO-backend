@@ -17,11 +17,15 @@ export function setupDocs(app: Application) {
     },
 
     servers: [
-      {
-        url: "http://localhost:4000/api/",
-        description: "Local development server",
-      },
-    ],
+  {
+    url: process.env.BASE_URL,
+    description: "API server",
+  },
+  {
+    url:"http://localhost:4000/api",
+    description: "Local server",
+  },
+],
 
     components: {
       securitySchemes: {
@@ -155,9 +159,10 @@ export function setupDocs(app: Application) {
   };
 
   // Swagger options
+  const swaggerFileExtension = __filename.endsWith(".js") ? "js" : "ts";
   const options = {
     swaggerDefinition,
-    apis: [path.join(__dirname, 'swaggerRoutes.ts')], // paths to files containing OpenAPI definitions
+    apis: [path.join(__dirname, `swaggerRoutes.${swaggerFileExtension}`)], // paths to files containing OpenAPI definitions
   };
 
   // Swagger specification
