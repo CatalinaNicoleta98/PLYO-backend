@@ -22,7 +22,7 @@ export async function registerUser(req: Request, res: Response): Promise<void> {
 
     const emailExist = await userModel.findOne({ email: req.body.email });
     if (emailExist) {
-      res.status(400).json({ error: "Email is already registered" });
+      res.status(409).json({ error: "Email is already registered" });
       return;
     }
 
