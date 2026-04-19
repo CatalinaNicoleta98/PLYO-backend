@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { test, expect } from '@playwright/test';
 import { loginAndGetToken } from './helpers/auth.helper';
 
@@ -10,6 +11,9 @@ test.describe('Applications - Delete', () => {
 
     // Step 2: create a new application
     const createResponse = await request.post('/api/applications', {
+      headers: {
+        'auth-token': token
+      },
       data: {
         companyName: 'Delete Test Company',
         roleTitle: 'Test Role',
