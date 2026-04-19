@@ -18,10 +18,10 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 //CRUD for applications
-router.post('/applications', createApplication);
-router.get('/applications', getAllApplications);
-router.get('/applications/:id', getApplicationById);
-router.put('/applications/:id',verifyToken, updateApplicationById);
+router.post('/applications', verifyToken, createApplication);
+router.get('/applications', verifyToken, getAllApplications);
+router.get('/applications/:id', verifyToken, getApplicationById);
+router.put('/applications/:id', verifyToken, updateApplicationById);
 router.delete('/applications/:id', verifyToken, deleteApplicationById);
 
 //Authentication routes
