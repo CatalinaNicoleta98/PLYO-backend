@@ -16,12 +16,13 @@ test.describe('Applications - Create', () => {
 
     const body = await response.json();
 
-    expect(body.companyName).toBe('Playwright Test Company');
-    expect(body.roleTitle).toBe('Backend Developer Intern');
-    expect(body.createdBy).toBe('playwright-test-user');
+    expect(body.error).toBeNull();
+    expect(body.data.companyName).toBe('Playwright Test Company');
+    expect(body.data.roleTitle).toBe('Backend Developer Intern');
+    expect(body.data.createdBy).toBe('playwright-test-user');
 
-    expect(body._id).toBeTruthy();
-    expect(body.createdAt).toBeTruthy();
+    expect(body.data._id).toBeTruthy();
+    expect(body.data.createdAt).toBeTruthy();
   });
 
 });

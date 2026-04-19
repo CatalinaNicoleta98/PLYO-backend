@@ -11,7 +11,7 @@ export async function createApplication(
 
   // Minimal validation to avoid confusing Mongoose errors
   if (!data?.createdBy) {
-    res.status(400).send({ error: "createdBy is required" });
+    res.status(400).json({ error: "createdBy is required", data: null });
     return;
   }
 
@@ -21,121 +21,116 @@ export async function createApplication(
     const application = new applicationModel(data);
     const result = await application.save();
 
-    res.status(201).send(result);
+    res.status(201).json({ error: null, data: result });
   } catch (error) {
-    res.status(500).send({ error: "Error creating application entry" });
+    res.status(500).json({ error: "Error creating application entry", data: null });
   } finally {
     await disconnect();
   }
 }
 
-//retieves all applications from the data source
+export async function getAllApplications(
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    await connect();
 
-export async function getAllApplications(req: Request, res: Response) {
+    const result = await applicationModel.find({});
 
-    try{
-
-        await connect();
-
-        
-        const result = await applicationModel.find({});
-        
-        res.status(200).send(result);
-
-
-    }catch (error) {
-
-        res.status(500).send("error retrieving applications. Error: " + error);
-
-    }finally {
-
-        await disconnect();
-    }
-
-} 
-
-//retrieves an application entry by id from the data source
-export async function getApplicationById(req: Request, res: Response) {
-
-    try{
-
-        await connect();
-
-        const id = req.params.id;
-
-        
-        const result = await applicationModel.find({_id: id});
-        
-        res.status(200).send(result);
-
-
-    }catch (error) {
-
-        res.status(500).send("error retrieving applications. Error: " + error);
-
-    }finally {
-
-        await disconnect();
-    }
-
-} 
-
-//updates an application entry by id in the data source based on the request body
-export async function updateApplicationById(req: Request, res: Response) {
-
-    const id = req.params.id;
-
-    try{
-
-        await connect();
-
-    
-        const result = await applicationModel.findByIdAndUpdate(id, req.body);
-
-        if(!result){
-            res.status(404).send('Cannot update application entry with id= ' + id );
-        }else{
-            res.status(200).send('Application entry was updated successfully.');
-        }
-        
-
-    
-    }catch (error) {
-
-        res.status(500).send("Error updating application entry by id. Error: " + error);
-
-    }finally {
-
-        await disconnect();
-    }
+    res.status(200).json({ error: null, data: result });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Error retrieving applications", data: null });
+  } finally {
+    await disconnect();
+  }
 }
 
-//deletes an application entry by id from the data source
-export async function deleteApplicationById(req: Request, res: Response) {
+export async function getApplicationById(
+  req: Request,
+  res: Response
+): Promise<void> {
+  const id = req.params.id;
 
-    const id = req.params.id;
+  try {
+    await connect();
 
-    try{
+    const result = await applicationModel.findById(id);
 
-        await connect();
-
-        const result = await applicationModel.findByIdAndDelete(id);
-
-        if(!result){
-            res.status(404).send('Cannot delete application entry with id= ' + id );
-        }else{
-            res.status(200).send('Application entry was deleted successfully.');
-        }
-        
-
-    
-    }catch (error) {
-
-        res.status(500).send("Error deleting application entry by id. Error: " + error);
-
-    }finally {
-
-        await disconnect();
+    if (!result) {
+      res
+        .status(404)
+        .json({ error: `Application entry with id=${id} was not found`, data: null });
+      return;
     }
 
+    res.status(200).json({ error: null, data: result });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Error retrieving application entry", data: null });
+  } finally {
+    await disconnect();
+  }
+}
+
+export async function updateApplicationById(
+  req: Request,
+  res: Response
+): Promise<void> {
+  const id = req.params.id;
+
+  try {
+    await connect();
+
+    const result = await applicationModel.findByIdAndUpdate(id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!result) {
+      res
+        .status(404)
+        .json({ error: `Cannot update application entry with id=${id}`, data: null });
+      return;
+    }
+
+    res.status(200).json({ error: null, data: result });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Error updating application entry by id", data: null });
+  } finally {
+    await disconnect();
+  }
+}
+
+export async function deleteApplicationById(
+  req: Request,
+  res: Response
+): Promise<void> {
+  const id = req.params.id;
+
+  try {
+    await connect();
+
+    const result = await applicationModel.findByIdAndDelete(id);
+
+    if (!result) {
+      res
+        .status(404)
+        .json({ error: `Cannot delete application entry with id=${id}`, data: null });
+      return;
+    }
+
+    res.status(200).json({ error: null, data: true });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Error deleting application entry by id", data: null });
+  } finally {
+    await disconnect();
+  }
 }
