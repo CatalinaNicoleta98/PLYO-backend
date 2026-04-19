@@ -16,7 +16,9 @@
     "forceConsistentCasingInFileNames": false,
     "strict": true,
     "noImplicitAny": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["node"],
+    "ignoreDeprecations": "6.0"
   },
   "include": ["./src"],
   "exclude": ["node_modules/**/*"]
