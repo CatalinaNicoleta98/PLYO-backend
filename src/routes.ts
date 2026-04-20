@@ -1,9 +1,13 @@
 import {Router, Request, Response} from 'express';
-import { createApplication, 
-    getAllApplications, 
+import {
+    createApplication,
+    getAllApplications,
     getApplicationById,
     updateApplicationById,
-    deleteApplicationById } from './controllers/applicationController';
+    deleteApplicationById,
+    upload,
+    uploadApplicationDocument,
+} from './controllers/applicationController';
 
 import { registerUser, loginUser, verifyToken } from './controllers/authController';
 
@@ -23,6 +27,7 @@ router.get('/applications', verifyToken, getAllApplications);
 router.get('/applications/:id', verifyToken, getApplicationById);
 router.put('/applications/:id', verifyToken, updateApplicationById);
 router.delete('/applications/:id', verifyToken, deleteApplicationById);
+router.post('/applications/:id/upload', verifyToken, upload.single('file'), uploadApplicationDocument);
 
 //Authentication routes
 router.post('/auth/register', registerUser);

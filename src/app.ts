@@ -5,6 +5,7 @@ import {testConnection} from '../repository/db';
 import test from 'node:test';
 import cors from 'cors';
 import { setupDocs } from './util/documentation';
+import path from 'path';
 
 
 dotenvFlow.config();
@@ -33,6 +34,9 @@ setupCors();
 
 //middleware to parse JSON request bodies
 app.use(express.json());
+
+// serve uploaded files
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // routes AFTER cors
 app.use('/api', routes);

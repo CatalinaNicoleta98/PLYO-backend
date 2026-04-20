@@ -35,63 +35,127 @@ const applicationSchema = new Schema<Application>(
       default: "draft",
     },
 
-    companyWebsite: {
+    jobType: {
       type: String,
-    },
-
-    jobPostUrl: {
-      type: String,
-    },
-
-    applicationUrl: {
-      type: String,
+      enum: [
+        "full_time",
+        "part_time",
+        "student_job",
+        "internship",
+        "contract",
+        "temporary",
+        "freelance",
+        "other",
+      ],
+      default: "other",
     },
 
     location: {
       type: String,
+      trim: true,
     },
 
-    workType: {
+    jobUrl: {
       type: String,
-      enum: ["onsite", "hybrid", "remote"],
+      trim: true,
     },
 
-    priority: {
+    isRemote: {
+      type: Boolean,
+      default: false,
+    },
+
+    appliedDate: {
+      type: Date,
+    },
+
+    endedDate: {
+      type: Date,
+    },
+
+    followUpDate: {
+      type: Date,
+    },
+
+    interviewContactName: {
       type: String,
-      enum: ["low", "medium", "high"],
+      trim: true,
     },
 
-    dateApplied: {
-      type: Date,
+    interviewContactRole: {
+      type: String,
+      trim: true,
     },
 
-    deadline: {
-      type: Date,
+    interviewContactEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
     },
 
-    nextFollowUpAt: {
-      type: Date,
-    },
+    otherContacts: [
+      {
+        name: {
+          type: String,
+          trim: true,
+          required: true,
+        },
+        role: {
+          type: String,
+          trim: true,
+          required: true,
+        },
+        email: {
+          type: String,
+          trim: true,
+          lowercase: true,
+          required: true,
+        },
+      },
+    ],
 
     notes: {
       type: String,
+      trim: true,
     },
 
-    tags: {
-      type: [String],
-    },
-
-    cvUrl: {
-      type: String,
-    },
-
-    coverLetterUrl: {
-      type: String,
-    },
-
-    otherDocUrls: {
-      type: [String],
-    },
+    documents: [
+      {
+        fileName: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        originalName: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        mimeType: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        size: {
+          type: Number,
+          required: true,
+        },
+        url: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        category: {
+          type: String,
+          enum: ["cv", "cover_letter", "portfolio", "other"],
+          default: "other",
+        },
+        uploadedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
 
     createdBy: {
       type: String,
