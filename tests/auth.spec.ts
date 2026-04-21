@@ -1,11 +1,7 @@
 import { test, expect } from '@playwright/test';
+import { requireTestPassword, TEST_USERNAME } from './helpers/testUser';
 
-const TEST_EMAIL = process.env.TEST_USER_EMAIL;
-const TEST_PASSWORD = process.env.TEST_USER_PASSWORD;
-
-if (!TEST_EMAIL || !TEST_PASSWORD) {
-  throw new Error('Missing TEST_USER_EMAIL or TEST_USER_PASSWORD environment variables.');
-}
+const TEST_PASSWORD = requireTestPassword();
 
 test.describe('Authentication - Login', () => {
   // The test user is prepared in Playwright global setup.
@@ -14,7 +10,7 @@ test.describe('Authentication - Login', () => {
   test('should log in a user with valid credentials', async ({ request }) => {
     const response = await request.post('/api/auth/login', {
       data: {
-        email: TEST_EMAIL,
+        username: TEST_USERNAME,
         password: TEST_PASSWORD
       }
     });

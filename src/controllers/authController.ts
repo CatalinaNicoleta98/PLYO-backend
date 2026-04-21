@@ -26,10 +26,18 @@ export async function registerUser(req: Request, res: Response): Promise<void> {
       return;
     }
 
+    const usernameLower = String(req.body.username).toLowerCase().trim();
+    const usernameExist = await userModel.findOne({ usernameLower });
+    if (usernameExist) {
+      res.status(409).json({ error: "Username is already taken" });
+      return;
+    }
+
     const salt = await bcrypt.genSalt(10);
     const passwordHashed = await bcrypt.hash(req.body.password, salt);
 
     const userObject = new userModel({
+      username: req.body.username,
       email: req.body.email,
       password: passwordHashed,
     });
@@ -57,15 +65,16 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
 
     await connect();
 
-    const user = await userModel.findOne({ email: req.body.email });
+    const usernameLower = String(req.body.username).toLowerCase().trim();
+    const user = await userModel.findOne({ usernameLower });
     if (!user) {
-      res.status(400).json({ error: "Invalid email or password" });
+      res.status(400).json({ error: "Invalid username or password" });
       return;
     }
 
     const validPassword = await bcrypt.compare(req.body.password, user.password);
     if (!validPassword) {
-      res.status(400).json({ error: "Invalid email or password" });
+      res.status(400).json({ error: "Invalid username or password" });
       return;
     }
 
@@ -76,7 +85,7 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
     }
 
     const token = jwt.sign(
-      { _id: user._id.toString(), email: user.email },
+      { _id: user._id.toString(), username: user.username },
       secret,
       { expiresIn: "2h" }
     );
@@ -87,7 +96,7 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
     res
       .status(200)
       .header("auth-token", token)
-      .json({ error: null, data: { userId, token } });
+      .json({ error: null, data: { userId, token, username: user.username } });
   } catch (error) {
     res.status(500).json({ error: "Error logging in", details: String(error) });
   } finally {
@@ -95,9 +104,10 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
   }
 }
 
-// validate user registration data (email and password)
+// validate user registration data (username, email and password)
 export function validateUserRegistration(data: User): ValidationResult {
   const schema = Joi.object({
+    username: Joi.string().min(3).max(50).required(),
     email: Joi.string().email().min(6).max(255).required(),
     password: Joi.string().min(6).max(255).required(),
   });
@@ -105,10 +115,10 @@ export function validateUserRegistration(data: User): ValidationResult {
   return schema.validate(data);
 }
 
-// validate user login data (email and password)
+// validate user login data (username and password)
 export function validateUserLogin(data: User): ValidationResult {
   const schema = Joi.object({
-    email: Joi.string().email().min(6).max(255).required(),
+    username: Joi.string().min(3).max(50).required(),
     password: Joi.string().min(6).max(255).required(),
   });
 

@@ -1,18 +1,15 @@
 
 
 import dotenvFlow from 'dotenv-flow';
+import { getTestEmail, requireTestPassword, TEST_USERNAME } from '../helpers/testUser';
 
 // Load environment variables
 dotenvFlow.config();
 
 export default async function globalSetup() {
   const baseURL = process.env.API_BASE_URL || 'http://localhost:4000';
-  const email = process.env.TEST_USER_EMAIL;
-  const password = process.env.TEST_USER_PASSWORD;
-
-  if (!email || !password) {
-    throw new Error('TEST_USER_EMAIL and TEST_USER_PASSWORD must be defined in the environment.');
-  }
+  const email = getTestEmail();
+  const password = requireTestPassword();
 
   try {
     await fetch(`${baseURL}/api/auth/register`, {
@@ -21,6 +18,7 @@ export default async function globalSetup() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
+        username: TEST_USERNAME,
         email,
         password
       })

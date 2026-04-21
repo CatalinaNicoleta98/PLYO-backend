@@ -1,5 +1,8 @@
 /// <reference types="node" />
 import { test, expect } from '@playwright/test';
+import { requireTestPassword, TEST_USERNAME } from './helpers/testUser';
+
+const TEST_PASSWORD = requireTestPassword();
 
 test.describe('Applications - Create', () => {
 
@@ -8,8 +11,8 @@ test.describe('Applications - Create', () => {
     // Login to get token
     const loginResponse = await request.post('/api/auth/login', {
       data: {
-        email: process.env.TEST_USER_EMAIL,
-        password: process.env.TEST_USER_PASSWORD
+        username: TEST_USERNAME,
+        password: TEST_PASSWORD
       }
     });
 
