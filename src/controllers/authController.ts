@@ -2,6 +2,9 @@ import { type Request, type Response, type NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import Joi, { type ValidationResult } from "joi";
+import fs from "fs/promises";
+import path from "path";
+import { applicationModel } from "../models/applicationModel";
 
 // project imports
 import { userModel } from "../models/userModel";
@@ -99,6 +102,112 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
       .json({ error: null, data: { userId, token, username: user.username } });
   } catch (error) {
     res.status(500).json({ error: "Error logging in", details: String(error) });
+  } finally {
+    await disconnect();
+  }
+}
+
+// Update username
+export async function updateUsername(req: Request, res: Response): Promise<void> {
+  try {
+    const newUsername = String(req.body.username || "").trim();
+
+    if (!newUsername || newUsername.length < 3 || newUsername.length > 50) {
+      res.status(400).json({ error: "Username must be between 3 and 50 characters" });
+      return;
+    }
+
+    const token = req.header("auth-token");
+    const secret = process.env.JWT_SECRET || process.env.TOKEN_SECRET;
+
+    if (!token || !secret) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const decoded = jwt.verify(token, secret) as { _id: string };
+    const userId = decoded._id;
+
+    await connect();
+
+    const usernameLower = newUsername.toLowerCase();
+
+    const existingUser = await userModel.findOne({
+      usernameLower,
+      _id: { $ne: userId },
+    });
+
+    if (existingUser) {
+      res.status(409).json({ error: "Username is already taken" });
+      return;
+    }
+
+    const updatedUser = await userModel.findByIdAndUpdate(
+      userId,
+      {
+        username: newUsername,
+        usernameLower,
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    res.status(200).json({ error: null, data: { username: updatedUser.username } });
+  } catch (error) {
+    res.status(500).json({ error: "Error updating username", details: String(error) });
+  } finally {
+    await disconnect();
+  }
+}
+
+// Delete account (cascade delete user data)
+export async function deleteAccount(req: Request, res: Response): Promise<void> {
+  try {
+    const token = req.header("auth-token");
+    const secret = process.env.JWT_SECRET || process.env.TOKEN_SECRET;
+
+    if (!token || !secret) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const decoded = jwt.verify(token, secret) as { _id: string };
+    const userId = decoded._id;
+
+    await connect();
+
+    // 1. find all applications for the user
+    const applications = await applicationModel.find({ createdBy: userId });
+
+    // 2. delete all uploaded files from disk
+    for (const app of applications) {
+      if (!app.documents) continue;
+
+      for (const doc of app.documents) {
+        if (!doc.url) continue;
+
+        try {
+          const filePath = path.join(process.cwd(), doc.url);
+          await fs.unlink(filePath);
+        } catch {
+          // ignore file deletion errors (file may already be removed)
+        }
+      }
+    }
+
+    // 3. delete applications
+    await applicationModel.deleteMany({ createdBy: userId });
+
+    // 4. delete user
+    await userModel.findByIdAndDelete(userId);
+
+    res.status(200).json({ error: null, data: "Account deleted" });
+  } catch (error) {
+    res.status(500).json({ error: "Error deleting account", details: String(error) });
   } finally {
     await disconnect();
   }

@@ -10,7 +10,7 @@ import {
     deleteApplicationDocument,
 } from './controllers/applicationController';
 
-import { registerUser, loginUser, verifyToken } from './controllers/authController';
+import { registerUser, loginUser, verifyToken, updateUsername, deleteAccount } from './controllers/authController';
 
 const router: Router = Router();
 
@@ -34,5 +34,7 @@ router.delete('/applications/:id/documents/:fileName', verifyToken, deleteApplic
 //Authentication routes
 router.post('/auth/register', registerUser);
 router.post('/auth/login', loginUser);
+router.patch('/auth/username', verifyToken, updateUsername);
+router.delete('/auth/account', verifyToken, deleteAccount);
 
 export default router;

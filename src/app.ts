@@ -21,7 +21,7 @@ function setupCors(){
 
     app.use(cors({
         origin: allowedOrigin,
-        methods: ['GET', 'POST', 'PUT', 'DELETE'],
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
         allowedHeaders: ['auth-token', 'Origin', 'X-Requested-With', 'Content-Type', 'Accept'],
         credentials: true
     }));
