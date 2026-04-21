@@ -1,3 +1,4 @@
+import type { Types } from "mongoose";
 export type ApplicationStatus =
   | "draft"
   | "planned"
@@ -54,7 +55,7 @@ export interface Application {
   otherContacts?: ContactPerson[];
   notes?: string;
   documents?: ApplicationDocument[];
-  createdBy: string;
+  createdBy: Types.ObjectId | string;
   createdAt?: Date;
   updatedAt?: Date;
 }

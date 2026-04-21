@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import { applicationModel } from "../models/applicationModel";
 import { connect, disconnect } from "../../repository/db";
 import type { ApplicationDocument } from "../interfaces/application";
@@ -12,6 +13,33 @@ const UPLOAD_DIR = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
+
+const resolveAuthenticatedUserId = (req: Request): string | null => {
+  const token = req.header("auth-token");
+  const secret = process.env.TOKEN_SECRET;
+
+  if (!token || !secret) {
+    return null;
+  }
+
+  try {
+    const decoded = jwt.verify(token, secret) as JwtPayload & { _id?: string };
+    return typeof decoded._id === "string" ? decoded._id : null;
+  } catch {
+    return null;
+  }
+};
+
+const getAuthenticatedUserIdOrRespond = (req: Request, res: Response): string | null => {
+  const userId = resolveAuthenticatedUserId(req);
+
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized", data: null });
+    return null;
+  }
+
+  return userId;
+};
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
@@ -33,16 +61,19 @@ export async function createApplication(
 ): Promise<void> {
   const data = req.body;
 
-  // Minimal validation to avoid confusing Mongoose errors
-  if (!data?.createdBy) {
-    res.status(400).json({ error: "createdBy is required", data: null });
+  const authenticatedUserId = getAuthenticatedUserIdOrRespond(req, res);
+
+  if (!authenticatedUserId) {
     return;
   }
 
   try {
     await connect();
 
-    const application = new applicationModel(data);
+    const application = new applicationModel({
+      ...data,
+      createdBy: authenticatedUserId,
+    });
     const result = await application.save();
 
     res.status(201).json({ error: null, data: result });
@@ -57,10 +88,16 @@ export async function getAllApplications(
   req: Request,
   res: Response
 ): Promise<void> {
+  const authenticatedUserId = getAuthenticatedUserIdOrRespond(req, res);
+
+  if (!authenticatedUserId) {
+    return;
+  }
+
   try {
     await connect();
 
-    const result = await applicationModel.find({});
+    const result = await applicationModel.find({ createdBy: authenticatedUserId });
 
     res.status(200).json({ error: null, data: result });
   } catch (error) {
@@ -78,10 +115,16 @@ export async function getApplicationById(
 ): Promise<void> {
   const id = req.params.id;
 
+  const authenticatedUserId = getAuthenticatedUserIdOrRespond(req, res);
+
+  if (!authenticatedUserId) {
+    return;
+  }
+
   try {
     await connect();
 
-    const result = await applicationModel.findById(id);
+    const result = await applicationModel.findOne({ _id: id, createdBy: authenticatedUserId });
 
     if (!result) {
       res
@@ -106,13 +149,25 @@ export async function updateApplicationById(
 ): Promise<void> {
   const id = req.params.id;
 
+  const authenticatedUserId = getAuthenticatedUserIdOrRespond(req, res);
+
+  if (!authenticatedUserId) {
+    return;
+  }
+
   try {
     await connect();
 
-    const result = await applicationModel.findByIdAndUpdate(id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    const { createdBy: _ignoredCreatedBy, ...updateData } = req.body;
+
+    const result = await applicationModel.findOneAndUpdate(
+      { _id: id, createdBy: authenticatedUserId },
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
     if (!result) {
       res
@@ -137,10 +192,16 @@ export async function deleteApplicationById(
 ): Promise<void> {
   const id = req.params.id;
 
+  const authenticatedUserId = getAuthenticatedUserIdOrRespond(req, res);
+
+  if (!authenticatedUserId) {
+    return;
+  }
+
   try {
     await connect();
 
-    const result = await applicationModel.findByIdAndDelete(id);
+    const result = await applicationModel.findOneAndDelete({ _id: id, createdBy: authenticatedUserId });
 
     if (!result) {
       res
@@ -165,6 +226,12 @@ export async function uploadApplicationDocument(
 ): Promise<void> {
   const id = req.params.id;
 
+  const authenticatedUserId = getAuthenticatedUserIdOrRespond(req, res);
+
+  if (!authenticatedUserId) {
+    return;
+  }
+
   // multer places file on req.file
   const file = (req as Request & { file?: Express.Multer.File }).file;
 
@@ -178,7 +245,7 @@ export async function uploadApplicationDocument(
   try {
     await connect();
 
-    const application = await applicationModel.findById(id);
+    const application = await applicationModel.findOne({ _id: id, createdBy: authenticatedUserId });
 
     if (!application) {
       res

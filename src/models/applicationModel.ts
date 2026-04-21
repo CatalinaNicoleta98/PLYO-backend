@@ -158,7 +158,7 @@ const applicationSchema = new Schema<Application>(
     ],
 
     createdBy: {
-      type: String,
+      type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
