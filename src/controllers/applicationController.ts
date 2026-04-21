@@ -283,3 +283,67 @@ export async function uploadApplicationDocument(
     await disconnect();
   }
 }
+
+export async function deleteApplicationDocument(
+  req: Request,
+  res: Response
+): Promise<void> {
+  const { id } = req.params;
+  const fileNameParam = req.params.fileName;
+  const fileName = Array.isArray(fileNameParam) ? fileNameParam[0] : fileNameParam;
+
+  if (!fileName) {
+    res.status(400).json({ error: "fileName is required", data: null });
+    return;
+  }
+
+  const authenticatedUserId = getAuthenticatedUserIdOrRespond(req, res);
+
+  if (!authenticatedUserId) {
+    return;
+  }
+
+  try {
+    await connect();
+
+    const application = await applicationModel.findOne({
+      _id: id,
+      createdBy: authenticatedUserId,
+    });
+
+    if (!application) {
+      res
+        .status(404)
+        .json({ error: `Application entry with id=${id} was not found`, data: null });
+      return;
+    }
+
+    const documentIndex = application.documents?.findIndex(
+      (document) => document.fileName === fileName
+    );
+
+    if (documentIndex === undefined || documentIndex < 0) {
+      res
+        .status(404)
+        .json({ error: `Document with fileName=${fileName} was not found`, data: null });
+      return;
+    }
+
+    application.documents?.splice(documentIndex, 1);
+    const result = await application.save();
+
+    const uploadPath = path.join(UPLOAD_DIR, path.basename(fileName));
+
+    if (fs.existsSync(uploadPath)) {
+      fs.unlinkSync(uploadPath);
+    }
+
+    res.status(200).json({ error: null, data: result });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Error deleting application document", data: null });
+  } finally {
+    await disconnect();
+  }
+}

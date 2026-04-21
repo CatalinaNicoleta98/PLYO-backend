@@ -7,6 +7,7 @@ import {
     deleteApplicationById,
     upload,
     uploadApplicationDocument,
+    deleteApplicationDocument,
 } from './controllers/applicationController';
 
 import { registerUser, loginUser, verifyToken } from './controllers/authController';
@@ -28,6 +29,7 @@ router.get('/applications/:id', verifyToken, getApplicationById);
 router.put('/applications/:id', verifyToken, updateApplicationById);
 router.delete('/applications/:id', verifyToken, deleteApplicationById);
 router.post('/applications/:id/upload', verifyToken, upload.single('file'), uploadApplicationDocument);
+router.delete('/applications/:id/documents/:fileName', verifyToken, deleteApplicationDocument);
 
 //Authentication routes
 router.post('/auth/register', registerUser);
