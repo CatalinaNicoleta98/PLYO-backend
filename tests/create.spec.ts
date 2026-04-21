@@ -18,8 +18,10 @@ test.describe('Applications - Create', () => {
 
     const loginBody = await loginResponse.json();
     const token = loginBody.data.token;
+    const userId = loginBody.data.userId;
 
     expect(token).toBeTruthy();
+    expect(userId).toBeTruthy();
 
     // Create application with auth-token
     const response = await request.post('/api/applications', {
@@ -40,7 +42,7 @@ test.describe('Applications - Create', () => {
     expect(body.error).toBeNull();
     expect(body.data.companyName).toBe('Playwright Test Company');
     expect(body.data.roleTitle).toBe('Backend Developer Intern');
-    expect(body.data.createdBy).toBe('playwright-test-user');
+    expect(body.data.createdBy).toBe(userId);
 
     expect(body.data._id).toBeTruthy();
     expect(body.data.createdAt).toBeTruthy();
