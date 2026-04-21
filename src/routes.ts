@@ -1,5 +1,12 @@
 import {Router, Request, Response} from 'express';
 import {
+    createDocument,
+    getAllDocuments,
+    getDocumentById,
+    updateDocumentById,
+    deleteDocumentById,
+} from './controllers/documentController';
+import {
     createApplication,
     getAllApplications,
     getApplicationById,
@@ -30,6 +37,13 @@ router.put('/applications/:id', verifyToken, updateApplicationById);
 router.delete('/applications/:id', verifyToken, deleteApplicationById);
 router.post('/applications/:id/upload', verifyToken, upload.single('file'), uploadApplicationDocument);
 router.delete('/applications/:id/documents/:fileName', verifyToken, deleteApplicationDocument);
+
+//CRUD for documents
+router.post('/documents', verifyToken, createDocument);
+router.get('/documents', verifyToken, getAllDocuments);
+router.get('/documents/:id', verifyToken, getDocumentById);
+router.put('/documents/:id', verifyToken, updateDocumentById);
+router.delete('/documents/:id', verifyToken, deleteDocumentById);
 
 //Authentication routes
 router.post('/auth/register', registerUser);
