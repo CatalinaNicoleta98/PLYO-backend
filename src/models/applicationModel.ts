@@ -6,16 +6,16 @@ const applicationSchema = new Schema<Application>(
     companyName: {
       type: String,
       required: true,
-      min: 2,
-      max: 255,
+      minlength: 2,
+      maxlength: 255,
       trim: true,
     },
 
     roleTitle: {
       type: String,
       required: true,
-      min: 2,
-      max: 255,
+      minlength: 2,
+      maxlength: 255,
       trim: true,
     },
 

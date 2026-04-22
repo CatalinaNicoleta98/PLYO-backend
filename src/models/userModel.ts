@@ -6,8 +6,8 @@ const userSchema = new Schema<User>(
     username: {
       type: String,
       required: true,
-      min: 3,
-      max: 50,
+      minlength: 3,
+      maxlength: 50,
       unique: true,
       trim: true,
     },
@@ -22,17 +22,22 @@ const userSchema = new Schema<User>(
     email: {
       type: String,
       required: true,
-      min: 6,
-      max: 255,
+      minlength: 6,
+      maxlength: 255,
       unique: true,
       trim: true,
+      lowercase: true,
+      validate: {
+        validator: (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+        message: "Invalid email format",
+      },
     },
 
     password: {
       type: String,
       required: true,
-      min: 6,
-      max: 255,
+      minlength: 6,
+      maxlength: 255,
     },
   },
   {

@@ -2,9 +2,11 @@ import { type Request, type Response, type NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import Joi, { type ValidationResult } from "joi";
+import { Types } from "mongoose";
 import fs from "fs/promises";
 import path from "path";
 import { applicationModel } from "../models/applicationModel";
+import { documentModel } from "../models/documentModel";
 
 // project imports
 import { userModel } from "../models/userModel";
@@ -19,7 +21,7 @@ interface AuthenticatedRequest extends Request {
 // Register a new user
 export async function registerUser(req: Request, res: Response): Promise<void> {
   try {
-    const { error } = validateUserRegistration(req.body);
+    const { error, value } = validateUserRegistration(req.body);
 
     if (error) {
       res.status(400).json({ error: error.details[0].message });
@@ -28,13 +30,13 @@ export async function registerUser(req: Request, res: Response): Promise<void> {
 
     await connect();
 
-    const emailExist = await userModel.findOne({ email: req.body.email });
+    const emailExist = await userModel.findOne({ email: value.email });
     if (emailExist) {
       res.status(409).json({ error: "Email is already registered" });
       return;
     }
 
-    const usernameLower = String(req.body.username).toLowerCase().trim();
+    const usernameLower = value.username.toLowerCase();
     const usernameExist = await userModel.findOne({ usernameLower });
     if (usernameExist) {
       res.status(409).json({ error: "Username is already taken" });
@@ -42,11 +44,11 @@ export async function registerUser(req: Request, res: Response): Promise<void> {
     }
 
     const salt = await bcrypt.genSalt(10);
-    const passwordHashed = await bcrypt.hash(req.body.password, salt);
+    const passwordHashed = await bcrypt.hash(value.password, salt);
 
     const userObject = new userModel({
-      username: req.body.username,
-      email: req.body.email,
+      username: value.username,
+      email: value.email,
       password: passwordHashed,
     });
 
@@ -55,7 +57,7 @@ export async function registerUser(req: Request, res: Response): Promise<void> {
     // 201 is more correct for "created"
     res.status(201).json({ error: null, data: savedUser._id });
   } catch (error) {
-    res.status(500).json({ error: "Error registering user", details: String(error) });
+    res.status(500).json({ error: "Error registering user" });
   } finally {
     await disconnect();
   }
@@ -64,7 +66,7 @@ export async function registerUser(req: Request, res: Response): Promise<void> {
 // Login
 export async function loginUser(req: Request, res: Response): Promise<void> {
   try {
-    const { error } = validateUserLogin(req.body);
+    const { error, value } = validateUserLogin(req.body);
 
     if (error) {
       res.status(400).json({ error: error.details[0].message });
@@ -73,14 +75,14 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
 
     await connect();
 
-    const usernameLower = String(req.body.username).toLowerCase().trim();
+    const usernameLower = value.username.toLowerCase();
     const user = await userModel.findOne({ usernameLower });
     if (!user) {
       res.status(400).json({ error: "Invalid username or password" });
       return;
     }
 
-    const validPassword = await bcrypt.compare(req.body.password, user.password);
+    const validPassword = await bcrypt.compare(value.password, user.password);
     if (!validPassword) {
       res.status(400).json({ error: "Invalid username or password" });
       return;
@@ -106,7 +108,7 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
       .header("auth-token", token)
       .json({ error: null, data: { userId, token, username: user.username } });
   } catch (error) {
-    res.status(500).json({ error: "Error logging in", details: String(error) });
+    res.status(500).json({ error: "Error logging in" });
   } finally {
     await disconnect();
   }
@@ -115,7 +117,7 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
 // Update username
 export async function updateUsername(req: Request, res: Response): Promise<void> {
   try {
-    const newUsername = String(req.body.username || "").trim();
+    const newUsername = typeof req.body?.username === "string" ? req.body.username.trim() : "";
 
     if (!newUsername || newUsername.length < 3 || newUsername.length > 50) {
       res.status(400).json({ error: "Username must be between 3 and 50 characters" });
@@ -159,7 +161,7 @@ export async function updateUsername(req: Request, res: Response): Promise<void>
 
     res.status(200).json({ error: null, data: { username: updatedUser.username } });
   } catch (error) {
-    res.status(500).json({ error: "Error updating username", details: String(error) });
+    res.status(500).json({ error: "Error updating username" });
   } finally {
     await disconnect();
   }
@@ -188,7 +190,7 @@ export async function deleteAccount(req: Request, res: Response): Promise<void> 
         if (!doc.url) continue;
 
         try {
-          const filePath = path.join(process.cwd(), doc.url);
+          const filePath = path.join(process.cwd(), "uploads", path.basename(doc.url));
           await fs.unlink(filePath);
         } catch {
           // ignore file deletion errors (file may already be removed)
@@ -199,12 +201,15 @@ export async function deleteAccount(req: Request, res: Response): Promise<void> 
     // 3. delete applications
     await applicationModel.deleteMany({ createdBy: userId });
 
-    // 4. delete user
+    // 4. delete documents
+    await documentModel.deleteMany({ createdBy: userId });
+
+    // 5. delete user
     await userModel.findByIdAndDelete(userId);
 
     res.status(200).json({ error: null, data: "Account deleted" });
   } catch (error) {
-    res.status(500).json({ error: "Error deleting account", details: String(error) });
+    res.status(500).json({ error: "Error deleting account" });
   } finally {
     await disconnect();
   }
@@ -213,22 +218,50 @@ export async function deleteAccount(req: Request, res: Response): Promise<void> 
 // validate user registration data (username, email and password)
 export function validateUserRegistration(data: User): ValidationResult {
   const schema = Joi.object({
-    username: Joi.string().min(3).max(50).required(),
-    email: Joi.string().email().min(6).max(255).required(),
-    password: Joi.string().min(6).max(255).required(),
+    username: Joi.string().trim().min(3).max(50).required().messages({
+      "string.empty": "Username is required",
+      "string.min": "Username must be at least 3 characters",
+      "string.max": "Username must be at most 50 characters",
+      "any.required": "Username is required",
+    }),
+    email: Joi.string().trim().lowercase().email().min(6).max(255).required().messages({
+      "string.empty": "Email is required",
+      "string.email": "Please provide a valid email address",
+      "string.min": "Email must be at least 6 characters",
+      "string.max": "Email must be at most 255 characters",
+      "any.required": "Email is required",
+    }),
+    password: Joi.string().trim().min(6).max(255).pattern(/^\S+$/).required().messages({
+      "string.empty": "Password is required",
+      "string.min": "Password must be at least 6 characters",
+      "string.max": "Password must be at most 255 characters",
+      "string.pattern.base": "Password cannot contain spaces",
+      "any.required": "Password is required",
+    }),
   });
 
-  return schema.validate(data);
+  return schema.validate(data, { abortEarly: true, stripUnknown: true });
 }
 
 // validate user login data (username and password)
 export function validateUserLogin(data: User): ValidationResult {
   const schema = Joi.object({
-    username: Joi.string().min(3).max(50).required(),
-    password: Joi.string().min(6).max(255).required(),
+    username: Joi.string().trim().min(3).max(50).required().messages({
+      "string.empty": "Username is required",
+      "string.min": "Username must be at least 3 characters",
+      "string.max": "Username must be at most 50 characters",
+      "any.required": "Username is required",
+    }),
+    password: Joi.string().trim().min(6).max(255).pattern(/^\S+$/).required().messages({
+      "string.empty": "Password is required",
+      "string.min": "Password must be at least 6 characters",
+      "string.max": "Password must be at most 255 characters",
+      "string.pattern.base": "Password cannot contain spaces",
+      "any.required": "Password is required",
+    }),
   });
 
-  return schema.validate(data);
+  return schema.validate(data, { abortEarly: true, stripUnknown: true });
 }
 
 // Middleware to verify the token and protect routes
@@ -248,6 +281,15 @@ export function verifyToken(req: Request, res: Response, next: NextFunction): vo
 
   try {
     const decoded = jwt.verify(token, secret) as { _id: string; username?: string };
+
+    if (
+      typeof decoded._id !== "string" ||
+      !/^[a-f\d]{24}$/i.test(decoded._id) ||
+      !Types.ObjectId.isValid(decoded._id)
+    ) {
+      res.status(401).json({ error: "Invalid token" });
+      return;
+    }
 
     // Attach user to request
     (req as AuthenticatedRequest).user = {
