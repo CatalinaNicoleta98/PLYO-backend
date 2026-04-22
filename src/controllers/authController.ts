@@ -3,10 +3,12 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import Joi, { type ValidationResult } from "joi";
 import { Types } from "mongoose";
+import crypto from "crypto";
 import fs from "fs/promises";
 import path from "path";
 import { applicationModel } from "../models/applicationModel";
 import { documentModel } from "../models/documentModel";
+import { passwordResetTokenModel } from "../models/passwordResetTokenModel";
 
 // project imports
 import { userModel } from "../models/userModel";
@@ -17,6 +19,43 @@ import { connect, disconnect } from "../../repository/db";
 interface AuthenticatedRequest extends Request {
   user?: { _id: string; username?: string };
 }
+
+const RESET_TOKEN_EXPIRES_IN_MS = 60 * 60 * 1000;
+const passwordResetSuccessMessage = "If an account with that email exists, a password reset link has been sent";
+
+const hashResetToken = (token: string): string => {
+  return crypto.createHash("sha256").update(token).digest("hex");
+};
+
+const createResetLink = (token: string): string => {
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  return `${frontendUrl.replace(/\/$/, "")}/reset-password?token=${token}`;
+};
+
+const sendPasswordResetEmail = async (email: string, resetLink: string): Promise<void> => {
+  const webhookUrl = process.env.PASSWORD_RESET_EMAIL_WEBHOOK_URL || process.env.EMAIL_WEBHOOK_URL;
+
+  try {
+    if (!webhookUrl) {
+      console.log(`Password reset link for ${email}: ${resetLink}`);
+      return;
+    }
+
+    await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: email,
+        subject: "Reset your PLYO password",
+        resetLink,
+      }),
+    });
+  } catch {
+    console.log(`Password reset email could not be sent for ${email}`);
+  }
+};
 
 // Register a new user
 export async function registerUser(req: Request, res: Response): Promise<void> {
@@ -114,6 +153,92 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
   }
 }
 
+// Request password reset
+export async function forgotPassword(req: Request, res: Response): Promise<void> {
+  try {
+    const { error, value } = validateForgotPasswordInput(req.body);
+
+    if (error) {
+      res.status(400).json({ error: error.details[0].message });
+      return;
+    }
+
+    await connect();
+
+    const user = await userModel.findOne({ email: value.email });
+
+    if (user) {
+      const token = crypto.randomBytes(32).toString("hex");
+      const hashedToken = hashResetToken(token);
+
+      await passwordResetTokenModel.deleteMany({ userId: user._id });
+      await passwordResetTokenModel.create({
+        userId: user._id,
+        token: hashedToken,
+      });
+
+      await sendPasswordResetEmail(value.email, createResetLink(token));
+    }
+
+    res.status(200).json({ error: null, data: passwordResetSuccessMessage });
+  } catch {
+    res.status(500).json({ error: "Error requesting password reset" });
+  } finally {
+    await disconnect();
+  }
+}
+
+// Reset password
+export async function resetPassword(req: Request, res: Response): Promise<void> {
+  try {
+    const { error, value } = validateResetPasswordInput(req.body);
+
+    if (error) {
+      res.status(400).json({ error: error.details[0].message });
+      return;
+    }
+
+    await connect();
+
+    const hashedToken = hashResetToken(value.token);
+    const resetToken = await passwordResetTokenModel.findOne({ token: hashedToken });
+
+    if (!resetToken || !resetToken.createdAt) {
+      res.status(400).json({ error: "Invalid or expired reset token" });
+      return;
+    }
+
+    const tokenAge = Date.now() - resetToken.createdAt.getTime();
+
+    if (tokenAge > RESET_TOKEN_EXPIRES_IN_MS) {
+      await passwordResetTokenModel.deleteOne({ _id: resetToken._id });
+      res.status(400).json({ error: "Invalid or expired reset token" });
+      return;
+    }
+
+    const user = await userModel.findById(resetToken.userId);
+
+    if (!user) {
+      await passwordResetTokenModel.deleteOne({ _id: resetToken._id });
+      res.status(400).json({ error: "Invalid or expired reset token" });
+      return;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHashed = await bcrypt.hash(value.password, salt);
+
+    user.password = passwordHashed;
+    await user.save();
+    await passwordResetTokenModel.deleteMany({ userId: user._id });
+
+    res.status(200).json({ error: null, data: "Password reset successful" });
+  } catch {
+    res.status(500).json({ error: "Error resetting password" });
+  } finally {
+    await disconnect();
+  }
+}
+
 // Update username
 export async function updateUsername(req: Request, res: Response): Promise<void> {
   try {
@@ -204,7 +329,10 @@ export async function deleteAccount(req: Request, res: Response): Promise<void> 
     // 4. delete documents
     await documentModel.deleteMany({ createdBy: userId });
 
-    // 5. delete user
+    // 5. delete password reset tokens
+    await passwordResetTokenModel.deleteMany({ userId });
+
+    // 6. delete user
     await userModel.findByIdAndDelete(userId);
 
     res.status(200).json({ error: null, data: "Account deleted" });
@@ -251,6 +379,38 @@ export function validateUserLogin(data: User): ValidationResult {
       "string.min": "Username must be at least 3 characters",
       "string.max": "Username must be at most 50 characters",
       "any.required": "Username is required",
+    }),
+    password: Joi.string().trim().min(6).max(255).pattern(/^\S+$/).required().messages({
+      "string.empty": "Password is required",
+      "string.min": "Password must be at least 6 characters",
+      "string.max": "Password must be at most 255 characters",
+      "string.pattern.base": "Password cannot contain spaces",
+      "any.required": "Password is required",
+    }),
+  });
+
+  return schema.validate(data, { abortEarly: true, stripUnknown: true });
+}
+
+export function validateForgotPasswordInput(data: unknown): ValidationResult {
+  const schema = Joi.object({
+    email: Joi.string().trim().lowercase().email().min(6).max(255).required().messages({
+      "string.empty": "Email is required",
+      "string.email": "Please provide a valid email address",
+      "string.min": "Email must be at least 6 characters",
+      "string.max": "Email must be at most 255 characters",
+      "any.required": "Email is required",
+    }),
+  });
+
+  return schema.validate(data, { abortEarly: true, stripUnknown: true });
+}
+
+export function validateResetPasswordInput(data: unknown): ValidationResult {
+  const schema = Joi.object({
+    token: Joi.string().trim().required().messages({
+      "string.empty": "Reset token is required",
+      "any.required": "Reset token is required",
     }),
     password: Joi.string().trim().min(6).max(255).pattern(/^\S+$/).required().messages({
       "string.empty": "Password is required",

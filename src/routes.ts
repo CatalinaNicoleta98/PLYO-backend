@@ -17,7 +17,15 @@ import {
     deleteApplicationDocument,
 } from './controllers/applicationController';
 
-import { registerUser, loginUser, verifyToken, updateUsername, deleteAccount } from './controllers/authController';
+import {
+    registerUser,
+    loginUser,
+    verifyToken,
+    updateUsername,
+    deleteAccount,
+    forgotPassword,
+    resetPassword,
+} from './controllers/authController';
 
 const router: Router = Router();
 
@@ -48,6 +56,8 @@ router.delete('/documents/:id', verifyToken, deleteDocumentById);
 //Authentication routes
 router.post('/auth/register', registerUser);
 router.post('/auth/login', loginUser);
+router.post('/auth/forgot-password', forgotPassword);
+router.post('/auth/reset-password', resetPassword);
 router.patch('/auth/username', verifyToken, updateUsername);
 router.delete('/auth/account', verifyToken, deleteAccount);
 
