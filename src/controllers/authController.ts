@@ -122,16 +122,12 @@ export async function updateUsername(req: Request, res: Response): Promise<void>
       return;
     }
 
-    const token = req.header("auth-token");
-    const secret = process.env.JWT_SECRET || process.env.TOKEN_SECRET;
+    const userId = (req as AuthenticatedRequest).user?._id;
 
-    if (!token || !secret) {
+    if (!userId) {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
-
-    const decoded = jwt.verify(token, secret) as { _id: string };
-    const userId = decoded._id;
 
     await connect();
 
@@ -172,16 +168,12 @@ export async function updateUsername(req: Request, res: Response): Promise<void>
 // Delete account (cascade delete user data)
 export async function deleteAccount(req: Request, res: Response): Promise<void> {
   try {
-    const token = req.header("auth-token");
-    const secret = process.env.JWT_SECRET || process.env.TOKEN_SECRET;
+    const userId = (req as AuthenticatedRequest).user?._id;
 
-    if (!token || !secret) {
+    if (!userId) {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
-
-    const decoded = jwt.verify(token, secret) as { _id: string };
-    const userId = decoded._id;
 
     await connect();
 

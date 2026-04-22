@@ -1,9 +1,12 @@
 import { Request, Response } from "express";
-import jwt, { JwtPayload } from "jsonwebtoken";
 import { Types } from "mongoose";
 import { applicationModel } from "../models/applicationModel";
 import { documentModel } from "../models/documentModel";
 import { connect, disconnect } from "../../repository/db";
+
+interface AuthenticatedRequest extends Request {
+  user?: { _id: string };
+}
 
 const validDocumentTypes = ["cv", "cover_letter"] as const;
 type DocumentInput = {
@@ -33,33 +36,6 @@ const getParamValue = (value: string | string[] | undefined): string | null => {
   }
 
   return value || null;
-};
-
-const resolveAuthenticatedUserId = (req: Request): string | null => {
-  const token = req.header("auth-token");
-  const secret = process.env.JWT_SECRET || process.env.TOKEN_SECRET;
-
-  if (!token || !secret) {
-    return null;
-  }
-
-  try {
-    const decoded = jwt.verify(token, secret) as JwtPayload & { _id?: string };
-    return typeof decoded._id === "string" ? decoded._id : null;
-  } catch {
-    return null;
-  }
-};
-
-const getAuthenticatedUserIdOrRespond = (req: Request, res: Response): string | null => {
-  const userId = resolveAuthenticatedUserId(req);
-
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorized", data: null });
-    return null;
-  }
-
-  return userId;
 };
 
 const validateDocumentInput = (
@@ -147,9 +123,10 @@ export async function createDocument(
   req: Request,
   res: Response
 ): Promise<void> {
-  const authenticatedUserId = getAuthenticatedUserIdOrRespond(req, res);
+  const authenticatedUserId = (req as AuthenticatedRequest).user?._id;
 
   if (!authenticatedUserId) {
+    res.status(401).json({ error: "Unauthorized", data: null });
     return;
   }
 
@@ -191,9 +168,10 @@ export async function getAllDocuments(
   req: Request,
   res: Response
 ): Promise<void> {
-  const authenticatedUserId = getAuthenticatedUserIdOrRespond(req, res);
+  const authenticatedUserId = (req as AuthenticatedRequest).user?._id;
 
   if (!authenticatedUserId) {
+    res.status(401).json({ error: "Unauthorized", data: null });
     return;
   }
 
@@ -215,9 +193,10 @@ export async function getDocumentById(
   res: Response
 ): Promise<void> {
   const id = getParamValue(req.params.id);
-  const authenticatedUserId = getAuthenticatedUserIdOrRespond(req, res);
+  const authenticatedUserId = (req as AuthenticatedRequest).user?._id;
 
   if (!authenticatedUserId) {
+    res.status(401).json({ error: "Unauthorized", data: null });
     return;
   }
 
@@ -254,9 +233,10 @@ export async function updateDocumentById(
   res: Response
 ): Promise<void> {
   const id = getParamValue(req.params.id);
-  const authenticatedUserId = getAuthenticatedUserIdOrRespond(req, res);
+  const authenticatedUserId = (req as AuthenticatedRequest).user?._id;
 
   if (!authenticatedUserId) {
+    res.status(401).json({ error: "Unauthorized", data: null });
     return;
   }
 
@@ -322,9 +302,10 @@ export async function deleteDocumentById(
   res: Response
 ): Promise<void> {
   const id = getParamValue(req.params.id);
-  const authenticatedUserId = getAuthenticatedUserIdOrRespond(req, res);
+  const authenticatedUserId = (req as AuthenticatedRequest).user?._id;
 
   if (!authenticatedUserId) {
+    res.status(401).json({ error: "Unauthorized", data: null });
     return;
   }
 
