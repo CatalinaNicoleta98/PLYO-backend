@@ -6,8 +6,8 @@ const documentSchema = new Schema<Document>(
     title: {
       type: String,
       required: true,
-      min: 2,
-      max: 120,
+      minlength: 2,
+      maxlength: 120,
       trim: true,
     },
 
@@ -15,11 +15,16 @@ const documentSchema = new Schema<Document>(
       type: String,
       required: true,
       enum: ["cv", "cover_letter"],
+      trim: true,
     },
 
     content: {
       type: String,
       required: true,
+      validate: {
+        validator: (value: string) => value.trim().length > 0,
+        message: "content is required",
+      },
     },
 
     linkedApplicationId: {

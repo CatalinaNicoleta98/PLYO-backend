@@ -11,6 +11,11 @@ import { userModel } from "../models/userModel";
 import { type User } from "../interfaces/user";
 import { connect, disconnect } from "../../repository/db";
 
+// Extend Request type locally to include user
+interface AuthenticatedRequest extends Request {
+  user?: { _id: string; username?: string };
+}
+
 // Register a new user
 export async function registerUser(req: Request, res: Response): Promise<void> {
   try {
@@ -250,10 +255,16 @@ export function verifyToken(req: Request, res: Response, next: NextFunction): vo
   }
 
   try {
-    // Verify token validity
-    jwt.verify(token, secret);
+    const decoded = jwt.verify(token, secret) as { _id: string; username?: string };
+
+    // Attach user to request
+    (req as AuthenticatedRequest).user = {
+      _id: decoded._id,
+      username: decoded.username,
+    };
+
     next();
   } catch {
-    res.status(401).send("Invalid token");
+    res.status(401).json({ error: "Invalid token" });
   }
 }
