@@ -4,9 +4,11 @@ import { applicationModel } from "../models/applicationModel";
 import { connect, disconnect } from "../../repository/db";
 import type { ApplicationDocument, ApplicationStatus, JobType } from "../interfaces/application";
 
-import multer from "multer";
+import multer, { StorageEngine } from "multer";
 import path from "path";
 import fs from "fs";
+
+import type { Express } from "express";
 
 const UPLOAD_DIR = path.join(process.cwd(), "uploads");
 const validApplicationStatuses = [
@@ -308,11 +310,19 @@ const validateApplicationInput = (
   return { error: null, data: sanitizedData };
 };
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
+const storage: StorageEngine = multer.diskStorage({
+  destination: (
+    _req: Request,
+    _file: Express.Multer.File,
+    cb: (error: Error | null, destination: string) => void
+  ) => {
     cb(null, UPLOAD_DIR);
   },
-  filename: (_req, file, cb) => {
+  filename: (
+    _req: Request,
+    file: Express.Multer.File,
+    cb: (error: Error | null, filename: string) => void
+  ) => {
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     const ext = path.extname(file.originalname);
     cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
