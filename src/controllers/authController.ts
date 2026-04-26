@@ -9,6 +9,7 @@ import path from "path";
 import { applicationModel } from "../models/applicationModel";
 import { documentModel } from "../models/documentModel";
 import { passwordResetTokenModel } from "../models/passwordResetTokenModel";
+import { sendPasswordResetEmail } from "../services/emailService";
 
 // project imports
 import { userModel } from "../models/userModel";
@@ -30,31 +31,6 @@ const hashResetToken = (token: string): string => {
 const createResetLink = (token: string): string => {
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
   return `${frontendUrl.replace(/\/$/, "")}/reset-password?token=${token}`;
-};
-
-const sendPasswordResetEmail = async (email: string, resetLink: string): Promise<void> => {
-  const webhookUrl = process.env.PASSWORD_RESET_EMAIL_WEBHOOK_URL || process.env.EMAIL_WEBHOOK_URL;
-
-  try {
-    if (!webhookUrl) {
-      console.log(`Password reset link for ${email}: ${resetLink}`);
-      return;
-    }
-
-    await fetch(webhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        to: email,
-        subject: "Reset your PLYO password",
-        resetLink,
-      }),
-    });
-  } catch {
-    console.log(`Password reset email could not be sent for ${email}`);
-  }
 };
 
 // Register a new user
@@ -177,7 +153,11 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
         token: hashedToken,
       });
 
-      await sendPasswordResetEmail(value.email, createResetLink(token));
+      try {
+        await sendPasswordResetEmail(value.email, createResetLink(token));
+      } catch (error) {
+        console.log(`Password reset email could not be sent for ${value.email}`, error);
+      }
     }
 
     res.status(200).json({ error: null, data: passwordResetSuccessMessage });
