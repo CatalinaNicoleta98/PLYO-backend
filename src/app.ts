@@ -16,15 +16,30 @@ const app: Application = express();
 
 //cors handling
 
-function setupCors(){
-    const allowedOrigin = process.env.FRONTEND_URL || "http://localhost:5173";
+function setupCors() {
+    const allowedOrigins = [
+        "http://localhost:5173",
+    ];
 
-    app.use(cors({
-        origin: allowedOrigin,
-        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-        allowedHeaders: ['auth-token', 'Origin', 'X-Requested-With', 'Content-Type', 'Accept'],
-        credentials: true
-    }));
+    if (process.env.FRONTEND_URL) {
+        allowedOrigins.push(process.env.FRONTEND_URL);
+    }
+
+    app.use(
+        cors({
+            origin: (origin, callback) => {
+                if (!origin || allowedOrigins.includes(origin)) {
+                    callback(null, true);
+                    return;
+                }
+
+                callback(new Error("Not allowed by CORS"));
+            },
+            methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+            allowedHeaders: ['auth-token', 'Origin', 'X-Requested-With', 'Content-Type', 'Accept'],
+            credentials: true,
+        })
+    );
 }
 
 
