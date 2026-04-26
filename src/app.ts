@@ -1,8 +1,7 @@
 import express, {Application, Request, Response} from 'express';
 import dotenvFlow from 'dotenv-flow';
 import routes from './routes';
-import {testConnection} from '../repository/db';
-import test from 'node:test';
+import { connect, disconnectOnShutdown } from '../repository/db';
 import cors from 'cors';
 import { setupDocs } from './util/documentation';
 import path from 'path';
@@ -56,12 +55,42 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 // routes AFTER cors
 app.use('/api', routes);
 
-export function startServer(){
+let shutdownHandlersRegistered = false;
+
+function registerShutdownHandlers() {
+    if (shutdownHandlersRegistered) {
+        return;
+    }
+
+    shutdownHandlersRegistered = true;
+
+    const gracefulShutdown = async (signal: NodeJS.Signals) => {
+        try {
+            await disconnectOnShutdown();
+        } catch (error) {
+            console.error(`Failed to disconnect from the database on ${signal}:`, error);
+        } finally {
+            process.exit(0);
+        }
+    };
+
+    process.once('SIGINT', () => {
+        void gracefulShutdown('SIGINT');
+    });
+
+    process.once('SIGTERM', () => {
+        void gracefulShutdown('SIGTERM');
+    });
+}
+
+export async function startServer(){
 
     //setup documentation
     setupDocs(app);
 
-   testConnection();
+    await connect();
+    registerShutdownHandlers();
+
 const PORT: number = parseInt(process.env.PORT as string) || 4000;
     app.listen(PORT, function(){
         console.log("Server is up and running on port:" + PORT);
