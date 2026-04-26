@@ -1,20 +1,16 @@
 import { APIRequestContext } from '@playwright/test';
+import { requireTestPassword, TEST_USERNAME } from './testUser';
 
 /**
  * Logs in using the test credentials and returns the JWT token.
  * This helper is reused by tests that require authenticated requests.
  */
 export async function loginAndGetToken(request: APIRequestContext): Promise<string> {
-  const email = process.env.TEST_USER_EMAIL;
-  const password = process.env.TEST_USER_PASSWORD;
-
-  if (!email || !password) {
-    throw new Error('TEST_USER_EMAIL and TEST_USER_PASSWORD must be defined in environment variables.');
-  }
+  const password = requireTestPassword();
 
   const response = await request.post('/api/auth/login', {
     data: {
-      email,
+      username: TEST_USERNAME,
       password
     }
   });

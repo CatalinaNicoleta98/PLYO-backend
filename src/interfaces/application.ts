@@ -1,35 +1,61 @@
+import type { Types } from "mongoose";
+export type ApplicationStatus =
+  | "draft"
+  | "planned"
+  | "applied"
+  | "interview"
+  | "assignment"
+  | "offer"
+  | "rejected"
+  | "withdrawn";
+
+export type JobType =
+  | "full_time"
+  | "part_time"
+  | "student_job"
+  | "internship"
+  | "contract"
+  | "temporary"
+  | "freelance"
+  | "other";
+
+export type DocumentCategory = "cv" | "cover_letter" | "portfolio" | "other";
+
+export interface ApplicationDocument {
+  fileName: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  url: string;
+  category: DocumentCategory;
+  uploadedAt?: Date;
+}
+
+export interface ContactPerson {
+  name: string;
+  role: string;
+  email: string;
+}
+
 export interface Application {
   _id: string;
-
-  // Required
   companyName: string;
   roleTitle: string;
-  status: "draft" | "planned" | "applied" | "interview" | "assignment" | "offer" | "rejected" | "withdrawn";
-
-  // Optional details
-  companyWebsite?: string;
-  jobPostUrl?: string;
-  applicationUrl?: string;
-
+  status: ApplicationStatus;
+  jobType?: JobType;
   location?: string;
-  workType?: "onsite" | "hybrid" | "remote";
-  priority?: "low" | "medium" | "high";
-
-  dateApplied?: Date;
-  deadline?: Date;
-  nextFollowUpAt?: Date;
-
+  jobUrl?: string;
+  isRemote?: boolean;
+  appliedDate?: Date;
+  endedDate?: Date;
+  followUpDate?: Date;
+  interviewContactName?: string;
+  interviewContactRole?: string;
+  interviewContactEmail?: string;
+  otherContacts?: ContactPerson[];
   notes?: string;
-  tags?: string[];
-
-  // Documents, keep simple for v1
-  cvUrl?: string;
-  coverLetterUrl?: string;
-  otherDocUrls?: string[]; // anything else, portfolio, certificates, etc.
-
-  // Ownership
-  createdBy: string;
-
+  documents?: ApplicationDocument[];
+  createdBy: Types.ObjectId | string;
   createdAt?: Date;
   updatedAt?: Date;
 }

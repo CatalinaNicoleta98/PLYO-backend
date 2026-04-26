@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { test, expect } from '@playwright/test';
 import { loginAndGetToken } from './helpers/auth.helper';
 
@@ -10,6 +11,9 @@ test.describe('Applications - Delete', () => {
 
     // Step 2: create a new application
     const createResponse = await request.post('/api/applications', {
+      headers: {
+        'auth-token': token
+      },
       data: {
         companyName: 'Delete Test Company',
         roleTitle: 'Test Role',
@@ -21,7 +25,9 @@ test.describe('Applications - Delete', () => {
 
     const createdApplication = await createResponse.json();
 
-    const applicationId = createdApplication._id;
+    expect(createdApplication.error).toBeNull();
+
+    const applicationId = createdApplication.data._id;
 
     expect(applicationId).toBeTruthy();
 
@@ -34,9 +40,10 @@ test.describe('Applications - Delete', () => {
 
     expect(deleteResponse.status()).toBe(200);
 
-    const responseText = await deleteResponse.text();
+    const body = await deleteResponse.json();
 
-    expect(responseText).toContain('Application');
+    expect(body.error).toBeNull();
+    expect(body.data).toBe(true);
 
   });
 

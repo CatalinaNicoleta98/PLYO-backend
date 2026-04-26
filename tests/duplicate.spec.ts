@@ -1,10 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { getTestEmail, requireTestPassword, TEST_USERNAME } from "./helpers/testUser";
 
-const duplicateEmail = process.env.TEST_USER_EMAIL ?? "playwright-test@plyo.com";
-const duplicatePassword = process.env.TEST_USER_PASSWORD ?? "123456";
+const duplicateEmail = getTestEmail();
+const duplicatePassword = requireTestPassword();
 
 test("should reject duplicate email registration", async ({ request }) => {
   const user = {
+    username: TEST_USERNAME,
     email: duplicateEmail,
     password: duplicatePassword,
   };

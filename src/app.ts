@@ -5,6 +5,7 @@ import {testConnection} from '../repository/db';
 import test from 'node:test';
 import cors from 'cors';
 import { setupDocs } from './util/documentation';
+import path from 'path';
 
 
 dotenvFlow.config();
@@ -16,34 +17,31 @@ const app: Application = express();
 //cors handling
 
 function setupCors(){
+    const allowedOrigin = process.env.FRONTEND_URL || "http://localhost:5173";
+
     app.use(cors({
-        //Allow request from any origin
-        origin: "*",
-
-        //allow methods
-        methods: 'GET, POST, PUT, DELETE',
-
-        //allow headers
-        allowedHeaders: ['auth-token', 'Origin', 'X-Requested-With', 'Content-Type', 'Accept' ],
-
-        //allow credentials
+        origin: allowedOrigin,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+        allowedHeaders: ['auth-token', 'Origin', 'X-Requested-With', 'Content-Type', 'Accept'],
         credentials: true
     }));
 }
 
 
 
-
+// APPLY CORS BEFORE anything else
+setupCors();
 
 //middleware to parse JSON request bodies
 app.use(express.json());
 
+// serve uploaded files
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// routes AFTER cors
 app.use('/api', routes);
 
 export function startServer(){
-
-    //setup CORS
-    setupCors();
 
     //setup documentation
     setupDocs(app);
