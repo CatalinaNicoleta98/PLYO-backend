@@ -8,7 +8,6 @@ import multer, { StorageEngine } from "multer";
 import path from "path";
 import fs from "fs";
 
-import type { Express } from "express";
 
 const UPLOAD_DIR = path.join(process.cwd(), "uploads");
 const validApplicationStatuses = [
@@ -62,6 +61,14 @@ type StringApplicationField =
   | "interviewContactRole"
   | "interviewContactEmail"
   | "notes";
+
+type UploadedApplicationFile = {
+  fieldname: string;
+  originalname: string;
+  mimetype: string;
+  filename: string;
+  size: number;
+};
 
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -313,14 +320,14 @@ const validateApplicationInput = (
 const storage: StorageEngine = multer.diskStorage({
   destination: (
     _req: Request,
-    _file: Express.Multer.File,
+    _file: UploadedApplicationFile,
     cb: (error: Error | null, destination: string) => void
   ) => {
     cb(null, UPLOAD_DIR);
   },
   filename: (
     _req: Request,
-    file: Express.Multer.File,
+    file: UploadedApplicationFile,
     cb: (error: Error | null, filename: string) => void
   ) => {
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
@@ -553,7 +560,7 @@ export async function uploadApplicationDocument(
 
 
   // multer places file on req.file
-  const file = (req as Request & { file?: Express.Multer.File }).file;
+  const file = (req as Request & { file?: UploadedApplicationFile }).file;
 
   if (!file) {
     res.status(400).json({ error: "No file uploaded", data: null });
